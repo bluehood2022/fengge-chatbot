@@ -212,9 +212,13 @@ exports.handler = async (event, context) => {
       };
     }
 
+    let reasoning = '';
     let reply = '';
     
     await streamDeepSeekAPI(message, (chunk) => {
+      if (chunk.type === 'reasoning') {
+        reasoning += chunk.content;
+      }
       if (chunk.type === 'content') {
         reply += chunk.content;
       }
@@ -222,7 +226,7 @@ exports.handler = async (event, context) => {
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ reply })
+      body: JSON.stringify({ reasoning, reply })
     };
   } catch (error) {
     console.error('Error:', error);

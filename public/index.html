@@ -286,6 +286,16 @@
       if (currentStreamingMessage) {
         // 移除打字机光标
         currentStreamingMessage.bubble.classList.remove('typing-cursor');
+        
+        // 自动折叠思考过程
+        const reasoningBox = currentStreamingMessage.wrapper.querySelector('.reasoning-box');
+        if (reasoningBox && reasoningContent) {
+          const contentEl = reasoningBox.querySelector('.reasoning-content');
+          const iconEl = reasoningBox.querySelector('.toggle-icon');
+          contentEl.classList.add('collapsed');
+          iconEl.classList.add('rotated');
+        }
+        
         currentStreamingMessage = null;
       }
       reasoningContent = '';
@@ -305,61 +315,82 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
 
       try {
-        // 使用流式输出
-        const response = await fetch('/.netlify/functions/api/stream', {
+        // 使用非流式 API（Netlify Functions 不支持真正的 SSE）
+        const response = await fetch('/.netlify/functions/api', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ message })
         });
 
         if (!response.ok) {
-          throw new Error('Stream failed');
+          throw new Error('API failed');
         }
 
+        const data = await response.json();
         loading.classList.add('hidden');
         
-        // 读取流式响应
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
-
-          for (const line of lines) {
-            const trimmedLine = line.trim();
-            if (trimmedLine.startsWith('data: ')) {
-              const data = trimmedLine.slice(6);
-              if (data === '[DONE]') {
-                finalizeStreamingMessage();
-                continue;
-              }
-
-              try {
-                const chunk = JSON.parse(data);
-                if (chunk.type === 'error') {
-                  throw new Error(chunk.content);
-                }
-                
-                updateStreamingMessage(
-                  chunk.type === 'reasoning' ? chunk.content : null,
-                  chunk.type === 'content' ? chunk.content : null
-                );
-              } catch (e) {
-                // 忽略解析错误
+        // 创建消息容器
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex justify-start w-full';
+        wrapper.innerHTML = '<div class="max-w-[80%]"></div>';
+        const container = wrapper.querySelector('div');
+        
+        // 添加思考过程框（如果有）
+        if (data.reasoning) {
+          const reasoningBox = createReasoningBox();
+          container.appendChild(reasoningBox);
+          const reasoningContentEl = reasoningBox.querySelector('.reasoning-content');
+          // 清理思考内容
+          const cleanReasoning = data.reasoning.replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
+          reasoningContentEl.innerHTML = cleanReasoning.replace(/\n/g, '<br>');
+          // 自动折叠
+          reasoningContentEl.classList.add('collapsed');
+          reasoningBox.querySelector('.toggle-icon').classList.add('rotated');
+        }
+        
+        // 添加回答气泡
+        const bubble = document.createElement('div');
+        bubble.className = 'bg-secondary/10 text-primary rounded-2xl rounded-bl-xl px-4 py-3';
+        container.appendChild(bubble);
+        
+        chatContainer.appendChild(wrapper);
+        
+        // 模拟流式输出效果（逐字显示）
+        const reply = data.reply || '峰哥暂时无法回答';
+        const cleanReply = reply.replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
+        
+        // 逐字显示
+        let index = 0;
+        const typingSpeed = 20; // 每个字符的显示速度（毫秒）
+        
+        function typeNextChar() {
+          if (index < cleanReply.length) {
+            // 获取下一个字符
+            let char = cleanReply[index];
+            index++;
+            
+            // 如果是 HTML 标签的开始，找到整个标签
+            if (char === '<') {
+              const tagEnd = cleanReply.indexOf('>', index);
+              if (tagEnd !== -1) {
+                char = cleanReply.substring(index - 1, tagEnd + 1);
+                index = tagEnd + 1;
               }
             }
+            
+            bubble.innerHTML += char;
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 继续下一个字符
+            setTimeout(typeNextChar, typingSpeed);
           }
         }
+        
+        // 开始逐字显示
+        typeNextChar();
 
       } catch (error) {
         loading.classList.add('hidden');
-        finalizeStreamingMessage();
         addMessage('网络出了点问题，你再试试', false);
       }
 
