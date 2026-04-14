@@ -336,66 +336,82 @@
         const container = wrapper.querySelector('div');
         
         // 添加思考过程框（如果有）
+        let reasoningBox = null;
+        let reasoningContentEl = null;
         if (data.reasoning) {
-          const reasoningBox = createReasoningBox();
+          reasoningBox = createReasoningBox();
           container.appendChild(reasoningBox);
-          const reasoningContentEl = reasoningBox.querySelector('.reasoning-content');
-          // 清理思考内容
-          const cleanReasoning = data.reasoning.replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
-          reasoningContentEl.innerHTML = cleanReasoning.replace(/\n/g, '<br>');
-          // 自动折叠
-          reasoningContentEl.classList.add('collapsed');
-          reasoningBox.querySelector('.toggle-icon').classList.add('rotated');
+          reasoningContentEl = reasoningBox.querySelector('.reasoning-content');
+          reasoningContentEl.classList.add('typing-cursor'); // 打字机光标
         }
         
-        // 添加回答气泡
+        // 添加回答气泡（暂时隐藏，等思考过程显示完）
         const bubble = document.createElement('div');
-        bubble.className = 'bg-secondary/10 text-primary rounded-2xl rounded-bl-xl px-4 py-3';
+        bubble.className = 'bg-secondary/10 text-primary rounded-2xl rounded-bl-xl px-4 py-3 hidden';
         container.appendChild(bubble);
         
         chatContainer.appendChild(wrapper);
         
-        // 模拟流式输出效果（逐字显示）
-        const reply = data.reply || '峰哥暂时无法回答';
-        const cleanReply = reply.replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
+        // 清理内容
+        const cleanReasoning = (data.reasoning || '').replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
+        const cleanReply = (data.reply || '峰哥暂时无法回答').replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
         
-        // 逐字显示
-        let index = 0;
-        const typingSpeed = 20; // 每个字符的显示速度（毫秒）
+        // 先流式显示思考过程
+        let reasoningIndex = 0;
+        const reasoningSpeed = 5; // 思考过程显示速度（毫秒/字符）
         
-        function typeNextChar() {
-          if (index < cleanReply.length) {
-            // 获取下一个字符
-            let char = cleanReply[index];
-            index++;
+        function typeReasoningChar() {
+          if (reasoningIndex < cleanReasoning.length) {
+            let char = cleanReasoning[reasoningIndex];
+            reasoningIndex++;
             
-            // 如果是 HTML 标签的开始，找到整个标签
+            // 处理 HTML 标签
             if (char === '<') {
-              const tagEnd = cleanReply.indexOf('>', index);
+              const tagEnd = cleanReasoning.indexOf('>', reasoningIndex);
               if (tagEnd !== -1) {
-                char = cleanReply.substring(index - 1, tagEnd + 1);
-                index = tagEnd + 1;
+                char = cleanReasoning.substring(reasoningIndex - 1, tagEnd + 1);
+                reasoningIndex = tagEnd + 1;
               }
             }
             
-            bubble.innerHTML += char;
+            reasoningContentEl.innerHTML += char;
             chatContainer.scrollTop = chatContainer.scrollHeight;
             
-            // 继续下一个字符
-            setTimeout(typeNextChar, typingSpeed);
+            setTimeout(typeReasoningChar, reasoningSpeed);
+          } else {
+            // 思考过程显示完毕，自动折叠
+            reasoningContentEl.classList.remove('typing-cursor');
+            reasoningContentEl.classList.add('collapsed');
+            reasoningBox.querySelector('.toggle-icon').classList.add('rotated');
+            
+            // 显示回答内容（直接显示，无特效）
+            bubble.classList.remove('hidden');
+            bubble.innerHTML = cleanReply.replace(/\n/g, '<br>');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            sendBtn.disabled = false;
+            userInput.focus();
           }
         }
         
-        // 开始逐字显示
-        typeNextChar();
+        // 如果有思考过程，先流式显示
+        if (cleanReasoning.length > 0) {
+          typeReasoningChar();
+        } else {
+          // 没有思考过程，直接显示回答
+          bubble.classList.remove('hidden');
+          bubble.innerHTML = cleanReply.replace(/\n/g, '<br>');
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+          sendBtn.disabled = false;
+          userInput.focus();
+        }
 
       } catch (error) {
         loading.classList.add('hidden');
         addMessage('网络出了点问题，你再试试', false);
+        sendBtn.disabled = false;
+        userInput.focus();
       }
-
-      sendBtn.disabled = false;
-      userInput.focus();
     }
 
     userInput.addEventListener('keypress', (e) => {
