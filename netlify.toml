@@ -1,0 +1,11 @@
+[build]
+  functions = "netlify/functions"
+  publish = "public"
+
+[functions]
+  included_files = ["fengge-roleplay/**", "skill-loader.js"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
