@@ -4,10 +4,36 @@ const path = require('path');
 // 峰哥 skill 内容（直接从文件读取）
 function getSystemPrompt() {
   const fs = require('fs');
-  // Netlify Functions 中，__dirname 是函数所在目录 /var/task
-  // fengge-roleplay 和 skill-loader.js 现在在 netlify/functions/ 目录下
-  const skillPath = path.join(__dirname, 'fengge-roleplay', 'SKILL.md');
-  const knowledgeBasePath = path.join(__dirname, 'fengge-roleplay', 'knowledge_base');
+  // Netlify Functions 中，尝试多个可能的路径
+  // process.cwd() 返回 /var/task
+  const possiblePaths = [
+    // 根目录的 fengge-roleplay（included_files 打包的位置）
+    path.join(process.cwd(), 'fengge-roleplay'),
+    // netlify/functions 目录下的 fengge-roleplay
+    path.join(__dirname, 'fengge-roleplay'),
+    // 直接在 /var/task 下
+    '/var/task/fengge-roleplay'
+  ];
+  
+  // 找到存在的路径
+  let basePath = null;
+  for (const p of possiblePaths) {
+    const skillPath = path.join(p, 'SKILL.md');
+    console.log('Trying path:', skillPath);
+    if (fs.existsSync(skillPath)) {
+      basePath = p;
+      console.log('✅ Found skill at:', skillPath);
+      break;
+    }
+  }
+  
+  if (!basePath) {
+    console.error('❌ Could not find fengge-roleplay in any of:', possiblePaths);
+    throw new Error('fengge-roleplay not found');
+  }
+  
+  const skillPath = path.join(basePath, 'SKILL.md');
+  const knowledgeBasePath = path.join(basePath, 'knowledge_base');
   
   console.log('Reading skill from:', skillPath);
   console.log('Reading knowledge base from:', knowledgeBasePath);
