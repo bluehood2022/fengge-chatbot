@@ -1,0 +1,8 @@
+/* 峰哥像素头像 - 32x32 FC 风格 */
+
+.fengge-pixel-avatar {
+  width: 128px;
+  height: 128px;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}

@@ -1,0 +1,17 @@
+{
+  "name": "fengge-answer-all",
+  "version": "1.0.0",
+  "description": "峰哥解答万物 - 峰哥亡命天涯人格聊天机器人",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "canvas": "^3.2.3",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "author": "杰杰陆",
+  "license": "MIT"
+}

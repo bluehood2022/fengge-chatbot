@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>峰哥解答万物</title>
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary: '#171717',
+            secondary: '#404040',
+            cta: '#D4AF37',
+            reasoning: '#6366f1',
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <style type="text/tailwindcss">
+    @layer base {
+      /* Smooth scrolling */
+      html {
+        scroll-behavior: smooth;
+      }
+      
+      /* Focus styles */
+      *:focus-visible {
+        outline: 2px solid #D4AF37;
+        outline-offset: 2px;
+      }
+      
+      /* Reduced motion */
+      @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+    }
+    
+    /* 思考过程样式 */
+    .reasoning-box {
+      @apply bg-reasoning/5 border border-reasoning/20 rounded-xl overflow-hidden mb-3;
+    }
+    
+    .reasoning-header {
+      @apply flex items-center justify-between px-4 py-2 bg-reasoning/10 cursor-pointer hover:bg-reasoning/15 transition-colors;
+    }
+    
+    .reasoning-content {
+      @apply px-4 py-3 text-sm text-secondary/70 leading-relaxed;
+    }
+    
+    .reasoning-content.collapsed {
+      @apply hidden;
+    }
+    
+    .toggle-icon {
+      @apply transition-transform duration-200;
+    }
+    
+    .toggle-icon.rotated {
+      @apply rotate-180;
+    }
+    
+    /* 打字机光标动画 */
+    .typing-cursor::after {
+      content: '|';
+      @apply animate-pulse text-cta;
+    }
+    
+    /* 流式输出时的渐变动画 */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    .streaming-text {
+      animation: fadeIn 0.2s ease-in;
+    }
+  </style>
+</head>
+<body class="bg-white min-h-screen font-sans antialiased">
+  <!-- Header -->
+  <header class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm border-b border-secondary/20">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <!-- Logo -->
+      <div class="flex items-center gap-3">
+        <img src="header-logo.png" alt="峰哥" class="w-10 h-10 rounded-lg" style="image-rendering: pixelated;">
+        <span class="text-xl font-semibold text-primary">峰哥解答万物</span>
+      </div>
+      
+      <!-- Subtitle -->
+      <p class="text-sm text-secondary hidden sm:block">这是好事儿啊</p>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="pt-16 pb-8 min-h-screen flex flex-col">
+    <div class="w-full max-w-7xl mx-auto px-6 flex-1 flex flex-col gap-4">
+      
+      <!-- Welcome State -->
+      <div id="welcome" class="flex-1 flex flex-col items-center justify-center text-center py-12">
+        <img src="welcome-logo.png" alt="峰哥" class="w-32 h-32 mb-4" style="image-rendering: pixelated;">
+        <h2 class="text-xl font-semibold text-primary mb-1">有什么事儿，问峰哥</h2>
+        <p class="text-secondary text-sm mb-6">弗罗伊峰心理学创始人，性压抑教父，纪录片导演，极限旅行家，国家一级登山运动员，自由潜运动员，滑翔伞飞行员，水下摄影师，B 站知名孩子王，解答万物</p>
+      </div>
+
+      <!-- Chat Container -->
+      <div id="chatContainer" class="flex-1 flex flex-col gap-3 overflow-y-auto hidden">
+        <!-- Messages will be inserted here -->
+      </div>
+
+      <!-- Loading Indicator with Pixel Animation -->
+      <div id="loading" class="hidden py-8 flex flex-col items-center justify-center">
+        <div class="relative w-16 h-16">
+          <!-- 像素化峰哥头像旋转动画 -->
+          <div class="w-full h-full animate-spin" style="animation-duration: 2s;">
+            <img src="fengge-pixel.png" alt="峰哥" class="w-full h-full" style="image-rendering: pixelated;">
+          </div>
+        </div>
+        <p class="text-sm text-secondary mt-4">峰哥正在思考...</p>
+      </div>
+
+      <!-- Input Container -->
+      <div class="flex flex-col items-center gap-3 mb-4">
+        <!-- 输入框 + 发送按钮 -->
+        <div class="w-full relative">
+          <textarea 
+            id="userInput" 
+            placeholder="输入你的问题，峰哥给你解构..." 
+            class="w-full px-5 py-4 pr-14 text-lg rounded-2xl bg-secondary/5 border border-secondary/10 text-primary placeholder:text-secondary/40 focus:border-cta focus:bg-white transition-colors resize-none overflow-y-auto leading-relaxed"
+            rows="1"
+            style="min-height: 64px; max-height: 200px;"
+            aria-label="输入问题"
+          ></textarea>
+          <button 
+            id="sendBtn" 
+            onclick="sendMessage()" 
+            class="absolute right-3 bottom-3 w-10 h-10 rounded-xl bg-cta text-white hover:bg-cta/90 active:bg-cta/80 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+            aria-label="发送消息"
+          >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-secondary/20 py-4 text-center">
+    <p class="text-xs text-secondary/50">Powered by DeepSeek · 峰哥亡命天涯</p>
+  </footer>
+
+  <script>
+    const chatContainer = document.getElementById('chatContainer');
+    const welcome = document.getElementById('welcome');
+    const userInput = document.getElementById('userInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const loading = document.getElementById('loading');
+
+    let currentStreamingMessage = null;
+    let reasoningContent = '';
+    let contentContent = '';
+
+    function quickAsk(topic) {
+      userInput.value = topic;
+      sendMessage();
+    }
+
+    function toggleReasoning(headerEl) {
+      const contentEl = headerEl.nextElementSibling;
+      const iconEl = headerEl.querySelector('.toggle-icon');
+      contentEl.classList.toggle('collapsed');
+      iconEl.classList.toggle('rotated');
+    }
+
+    function createReasoningBox() {
+      const box = document.createElement('div');
+      box.className = 'reasoning-box';
+      box.innerHTML = `
+        <div class="reasoning-header" onclick="toggleReasoning(this)">
+          <div class="flex items-center gap-2">
+            <svg class="w-4 h-4 text-reasoning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+            </svg>
+            <span class="text-sm font-medium text-reasoning">🤔 峰哥的思考过程</span>
+          </div>
+          <svg class="w-4 h-4 text-secondary toggle-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+          </svg>
+        </div>
+        <div class="reasoning-content"></div>
+      `;
+      return box;
+    }
+
+    function addMessage(content, isUser, isStreaming = false) {
+      welcome.classList.add('hidden');
+      chatContainer.classList.remove('hidden');
+      
+      const messageDiv = document.createElement('div');
+      messageDiv.className = `flex ${isUser ? 'justify-end' : 'justify-start'}`;
+      
+      const bubble = document.createElement('div');
+      bubble.className = `max-w-[80%] px-4 py-3 rounded-2xl ${
+        isUser 
+          ? 'bg-cta text-white rounded-br-xl' 
+          : 'bg-secondary/10 text-primary rounded-bl-xl'
+      } ${isStreaming ? 'typing-cursor' : ''}`;
+      
+      // 移除括号内容 (xxx)
+      const cleanContent = content.replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
+      bubble.innerHTML = cleanContent.replace(/\n/g, '<br>');
+      
+      messageDiv.appendChild(bubble);
+      chatContainer.appendChild(messageDiv);
+      
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+      
+      return { messageDiv, bubble };
+    }
+
+    function updateStreamingMessage(reasoning, content) {
+      if (!currentStreamingMessage) {
+        // 创建新的流式消息
+        const wrapper = document.createElement('div');
+        wrapper.className = 'flex justify-start w-full';
+        wrapper.innerHTML = '<div class="max-w-[80%]"></div>';
+        const container = wrapper.querySelector('div');
+        
+        // 添加思考过程框
+        const reasoningBox = createReasoningBox();
+        container.appendChild(reasoningBox);
+        
+        // 添加回答气泡
+        const bubble = document.createElement('div');
+        bubble.className = 'bg-secondary/10 text-primary rounded-2xl rounded-bl-xl px-4 py-3 typing-cursor streaming-text';
+        bubble.textContent = '';
+        container.appendChild(bubble);
+        
+        chatContainer.appendChild(wrapper);
+        currentStreamingMessage = { 
+          wrapper, 
+          reasoningBox: container.querySelector('.reasoning-content'), 
+          bubble 
+        };
+      }
+      
+      // 累积追加思考过程
+      if (reasoning) {
+        reasoningContent += reasoning;
+        if (currentStreamingMessage.reasoningBox) {
+          currentStreamingMessage.reasoningBox.innerHTML = reasoningContent.replace(/\n/g, '<br>');
+        }
+      }
+      
+      // 累积追加回答内容
+      if (content) {
+        contentContent += content;
+        const cleanContent = contentContent.replace(/\([^)]*\)/g, '').replace(/（[^)]*）/g, '');
+        if (currentStreamingMessage.bubble) {
+          currentStreamingMessage.bubble.innerHTML = cleanContent.replace(/\n/g, '<br>');
+        }
+      }
+      
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function finalizeStreamingMessage() {
+      if (currentStreamingMessage) {
+        // 移除打字机光标
+        currentStreamingMessage.bubble.classList.remove('typing-cursor');
+        currentStreamingMessage = null;
+      }
+      reasoningContent = '';
+      contentContent = '';
+    }
+
+    async function sendMessage() {
+      const message = userInput.value.trim();
+      if (!message) return;
+
+      sendBtn.disabled = true;
+      userInput.value = '';
+      userInput.style.height = '60px';  // 发送后重置高度
+      
+      addMessage(message, true);
+      loading.classList.remove('hidden');
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      try {
+        // 使用流式输出
+        const response = await fetch('/.netlify/functions/api/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message })
+        });
+
+        if (!response.ok) {
+          throw new Error('Stream failed');
+        }
+
+        loading.classList.add('hidden');
+        
+        // 读取流式响应
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (trimmedLine.startsWith('data: ')) {
+              const data = trimmedLine.slice(6);
+              if (data === '[DONE]') {
+                finalizeStreamingMessage();
+                continue;
+              }
+
+              try {
+                const chunk = JSON.parse(data);
+                if (chunk.type === 'error') {
+                  throw new Error(chunk.content);
+                }
+                
+                updateStreamingMessage(
+                  chunk.type === 'reasoning' ? chunk.content : null,
+                  chunk.type === 'content' ? chunk.content : null
+                );
+              } catch (e) {
+                // 忽略解析错误
+              }
+            }
+          }
+        }
+
+      } catch (error) {
+        loading.classList.add('hidden');
+        finalizeStreamingMessage();
+        addMessage('网络出了点问题，你再试试', false);
+      }
+
+      sendBtn.disabled = false;
+      userInput.focus();
+    }
+
+    userInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    // 自动调整输入框高度
+    userInput.addEventListener('input', function() {
+      this.style.height = 'auto';
+      this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+    });
+
+    // Focus input on load
+    userInput.focus();
+  </script>
+</body>
+</html>
